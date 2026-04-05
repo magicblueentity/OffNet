@@ -7,9 +7,9 @@ class SyncEngine {
     constructor() {
         this.isSyncing = false;
         this.syncInterval = null;
-        this.syncFrequency = 10000; // 10 seconds
-        this.maxRetries = 3;
-        this.retryDelay = 5000; // 5 seconds
+        this.syncFrequency = 3000; // 3 seconds (more aggressive)
+        this.maxRetries = 5; // Increased retries
+        this.retryDelay = 2000; // 2 seconds (faster retry)
         this.baseUrl = 'https://jsonplaceholder.typicode.com';
         this.listeners = [];
         this.conflictStrategy = 'last_write_wins'; // Options: 'last_write_wins', 'manual', 'ignore'
@@ -19,15 +19,19 @@ class SyncEngine {
         // Start listening for connection changes
         connection.addListener(async (isOnline, previousStatus) => {
             if (isOnline && !previousStatus) {
-                // Connection restored, start syncing
+                // Connection restored, start syncing and aggressive caching
                 await this.startSync();
+                await this.aggressiveCacheFetch();
             }
         });
 
         // Start periodic sync when online
         this.startPeriodicSync();
         
-        logger.info('Sync engine initialized');
+        // Start periodic aggressive caching
+        this.startAggressiveCaching();
+        
+        logger.info('Sync engine initialized with aggressive caching');
     }
 
     startPeriodicSync() {
@@ -44,7 +48,78 @@ class SyncEngine {
             }
         }, this.syncFrequency);
 
-        logger.info('Periodic sync started', { frequency: this.syncFrequency });
+        logger.info('Aggressive periodic sync started', { frequency: this.syncFrequency });
+    }
+
+    async aggressiveCacheFetch() {
+        if (!connection.isOnline) {
+            return;
+        }
+
+        logger.info('Starting aggressive cache fetch');
+        
+        try {
+            // Fetch all common endpoints to populate cache
+            const endpoints = [
+                '/posts',
+                '/posts/1',
+                '/posts/2',
+                '/users',
+                '/users/1',
+                '/users/2',
+                '/comments',
+                '/comments/1',
+                '/albums',
+                '/albums/1',
+                '/photos',
+                '/photos/1',
+                '/todos',
+                '/todos/1'
+            ];
+
+            const fetchPromises = endpoints.map(async (endpoint) => {
+                try {
+                    const response = await axios.get(`${this.baseUrl}${endpoint}`, {
+                        timeout: 3000,
+                        validateStatus: (status) => status < 500
+                    });
+                    
+                    // Cache the response
+                    await db.cacheResponse(
+                        endpoint,
+                        'GET',
+                        response.data,
+                        response.headers,
+                        response.status
+                    );
+                    
+                    logger.info('Aggressively cached endpoint', { endpoint, status: response.status });
+                } catch (error) {
+                    logger.warn('Failed to cache endpoint', { endpoint, error: error.message });
+                }
+            });
+
+            await Promise.allSettled(fetchPromises);
+            logger.info('Aggressive cache fetch completed');
+            
+        } catch (error) {
+            logger.error('Aggressive cache fetch failed', { error: error.message });
+        }
+    }
+
+    startAggressiveCaching() {
+        if (this.cacheInterval) {
+            clearInterval(this.cacheInterval);
+        }
+
+        // Fetch fresh data every 30 seconds when online
+        this.cacheInterval = setInterval(async () => {
+            if (connection.isOnline) {
+                await this.aggressiveCacheFetch();
+            }
+        }, 30000);
+
+        logger.info('Aggressive caching started', { interval: 30000 });
     }
 
     stopPeriodicSync() {
@@ -52,6 +127,14 @@ class SyncEngine {
             clearInterval(this.syncInterval);
             this.syncInterval = null;
             logger.info('Periodic sync stopped');
+        }
+    }
+
+    stopAggressiveCaching() {
+        if (this.cacheInterval) {
+            clearInterval(this.cacheInterval);
+            this.cacheInterval = null;
+            logger.info('Aggressive caching stopped');
         }
     }
 
@@ -452,6 +535,7 @@ class SyncEngine {
     // Cleanup
     destroy() {
         this.stopPeriodicSync();
+        this.stopAggressiveCaching();
         this.listeners = [];
         logger.info('Sync engine destroyed');
     }

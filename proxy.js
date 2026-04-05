@@ -39,8 +39,8 @@ class ProxyLayer {
                 // Online mode: forward to real API
                 const response = await this.forwardRequest(processedRequest);
                 
-                // Cache the response
-                if (this.cacheEnabled && this.shouldCache(method, endpoint)) {
+                // Cache the response aggressively for all methods
+                if (this.shouldCache(method, endpoint)) {
                     await db.cacheResponse(
                         endpoint, 
                         method, 
@@ -48,6 +48,7 @@ class ProxyLayer {
                         response.headers, 
                         response.status
                     );
+                    logger.info('Response cached aggressively', { method, endpoint, status: response.status });
                 }
                 
                 // Apply response interceptors
@@ -437,12 +438,15 @@ class ProxyLayer {
     }
 
     shouldCache(method, endpoint) {
-        // Cache GET requests and some POST responses
-        const cacheableMethods = ['GET'];
-        const cacheableEndpoints = ['/posts', '/users', '/comments', '/albums', '/photos', '/todos'];
+        // Cache ALL requests aggressively for better offline performance
+        const cacheableMethods = ['GET', 'POST', 'PUT', 'PATCH'];
+        const cacheableEndpoints = [
+            '/posts', '/users', '/comments', '/albums', '/photos', '/todos',
+            '/posts/', '/users/', '/comments/', '/albums/', '/photos/', '/todos/'
+        ];
         
-        return cacheableMethods.includes(method.toUpperCase()) ||
-               cacheableEndpoints.some(ep => endpoint.startsWith(ep));
+        return cacheableMethods.includes(method.toUpperCase()) &&
+               cacheableEndpoints.some(ep => endpoint.startsWith(ep) || endpoint.includes(ep));
     }
 
     sanitizeHeaders(headers) {

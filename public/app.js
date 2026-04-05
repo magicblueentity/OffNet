@@ -21,45 +21,7 @@ class OffNetApp {
         // Connection controls
         document.getElementById('goOnline').addEventListener('click', () => this.goOnline());
         document.getElementById('goOffline').addEventListener('click', () => this.goOffline());
-        document.getElementById('clearCache').addEventListener('click', () => this.clearCache());
         document.getElementById('startSync').addEventListener('click', () => this.startSync());
-
-        // API demo controls
-        document.getElementById('fetchPosts').addEventListener('click', () => this.fetchPosts());
-        document.getElementById('createPost').addEventListener('click', () => this.createPost());
-        document.getElementById('fetchUsers').addEventListener('click', () => this.fetchUsers());
-        document.getElementById('createUser').addEventListener('click', () => this.createUser());
-
-        // Queue controls
-        document.getElementById('refreshQueue').addEventListener('click', () => this.refreshQueue());
-        document.getElementById('retryFailed').addEventListener('click', () => this.retryFailed());
-
-        // Cache controls
-        document.getElementById('refreshCache').addEventListener('click', () => this.refreshCache());
-        document.getElementById('clearCacheBtn').addEventListener('click', () => this.clearCache());
-
-        // Logs controls
-        document.getElementById('refreshLogs').addEventListener('click', () => this.refreshLogs());
-        document.getElementById('clearLogs').addEventListener('click', () => this.clearLogs());
-        document.getElementById('logLevel').addEventListener('change', () => this.refreshLogs());
-
-        // Conflicts controls
-        document.getElementById('refreshConflicts').addEventListener('click', () => this.refreshConflicts());
-
-        // Modal controls
-        document.getElementById('closeModal').addEventListener('click', () => this.closeModal());
-        document.getElementById('conflictModal').addEventListener('click', (e) => {
-            if (e.target.id === 'conflictModal') {
-                this.closeModal();
-            }
-        });
-
-        // Conflict resolution buttons
-        document.querySelectorAll('[data-resolution]').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                this.resolveConflict(e.target.dataset.resolution);
-            });
-        });
     }
 
     async connectWebSocket() {
@@ -168,7 +130,6 @@ class OffNetApp {
                 
             case 'conflict_resolved':
                 this.showToast('Conflict resolved', 'success');
-                this.refreshConflicts();
                 break;
                 
             default:
@@ -181,10 +142,7 @@ class OffNetApp {
             await Promise.all([
                 this.refreshConnectionStatus(),
                 this.refreshStats(),
-                this.refreshQueue(),
-                this.refreshCache(),
-                this.refreshLogs(),
-                this.refreshConflicts()
+                this.refreshQueue()
             ]);
         } catch (error) {
             console.error('Failed to load initial data:', error);
@@ -276,100 +234,6 @@ class OffNetApp {
         `).join('');
     }
 
-    async refreshCache() {
-        try {
-            const response = await fetch('/api/offline/cache');
-            const cache = await response.json();
-            this.displayCache(cache);
-        } catch (error) {
-            console.error('Failed to refresh cache:', error);
-        }
-    }
-
-    displayCache(cache) {
-        const cacheList = document.getElementById('cacheList');
-        
-        if (cache.length === 0) {
-            cacheList.innerHTML = '<p class="text-muted">No cached responses</p>';
-            return;
-        }
-
-        cacheList.innerHTML = cache.map(item => `
-            <div class="cache-item">
-                <div class="cache-item-header">
-                    <span class="cache-item-endpoint">${item.method} ${item.endpoint}</span>
-                    <span class="cache-item-age">${this.formatAge(item.age)}</span>
-                </div>
-                <div class="cache-item-details">
-                    <span>Status: ${item.status}</span>
-                    <span>Cached: ${new Date(item.timestamp).toLocaleString()}</span>
-                </div>
-            </div>
-        `).join('');
-    }
-
-    async refreshLogs() {
-        try {
-            const level = document.getElementById('logLevel').value;
-            const response = await fetch(`/api/offline/logs?limit=50${level ? `&level=${level}` : ''}`);
-            const logs = await response.json();
-            this.displayLogs(logs);
-        } catch (error) {
-            console.error('Failed to refresh logs:', error);
-        }
-    }
-
-    displayLogs(logs) {
-        const logsList = document.getElementById('logsList');
-        
-        if (logs.length === 0) {
-            logsList.innerHTML = '<p class="text-muted">No logs available</p>';
-            return;
-        }
-
-        logsList.innerHTML = logs.map(log => `
-            <div class="log-item ${log.level}">
-                <span class="log-timestamp">${new Date(log.timestamp).toLocaleTimeString()}</span>
-                <span class="log-level ${log.level}">${log.level}</span>
-                <span class="log-message">${log.message}</span>
-            </div>
-        `).join('');
-    }
-
-    async refreshConflicts() {
-        try {
-            const response = await fetch('/api/offline/conflicts');
-            const conflicts = await response.json();
-            this.displayConflicts(conflicts);
-        } catch (error) {
-            console.error('Failed to refresh conflicts:', error);
-        }
-    }
-
-    displayConflicts(conflicts) {
-        const conflictsList = document.getElementById('conflictsList');
-        
-        if (conflicts.length === 0) {
-            conflictsList.innerHTML = '<p class="text-muted">No conflicts</p>';
-            return;
-        }
-
-        conflictsList.innerHTML = conflicts.map(conflict => `
-            <div class="conflict-item">
-                <div class="conflict-item-header">
-                    <span class="conflict-endpoint">${conflict.endpoint}</span>
-                    <div class="conflict-actions">
-                        <button class="btn btn-primary" onclick="app.openConflictModal(${conflict.id})">Resolve</button>
-                    </div>
-                </div>
-                <div class="text-muted">
-                    Created: ${new Date(conflict.created_at).toLocaleString()}
-                    ${conflict.resolution ? ` | Resolved: ${conflict.resolution}` : ''}
-                </div>
-            </div>
-        `).join('');
-    }
-
     // Connection control methods
     async goOnline() {
         try {
@@ -417,7 +281,6 @@ class OffNetApp {
             
             if (result.success) {
                 this.showToast('Cache cleared successfully', 'success');
-                this.refreshCache();
                 this.refreshStats();
             } else {
                 this.showToast('Failed to clear cache', 'error');
@@ -444,211 +307,6 @@ class OffNetApp {
         } catch (error) {
             console.error('Failed to start sync:', error);
             this.showToast('Failed to start sync', 'error');
-        } finally {
-            this.showLoading(false);
-        }
-    }
-
-    async retryFailed() {
-        try {
-            this.showLoading(true);
-            const response = await fetch('/api/offline/sync/retry', { method: 'POST' });
-            const result = await response.json();
-            
-            if (result.success) {
-                this.showToast('Retrying failed requests', 'info');
-                this.refreshQueue();
-            } else {
-                this.showToast('Failed to retry requests', 'error');
-            }
-        } catch (error) {
-            console.error('Failed to retry requests:', error);
-            this.showToast('Failed to retry requests', 'error');
-        } finally {
-            this.showLoading(false);
-        }
-    }
-
-    async clearLogs() {
-        // This would require a backend endpoint to clear logs
-        this.showToast('Log clearing not implemented yet', 'warning');
-    }
-
-    // API demo methods
-    async fetchPosts() {
-        try {
-            this.showLoading(true);
-            const response = await fetch('/api/posts');
-            const posts = await response.json();
-            this.displayApiResults(posts);
-            this.showToast('Posts fetched successfully', 'success');
-        } catch (error) {
-            console.error('Failed to fetch posts:', error);
-            this.displayApiResults({ error: error.message });
-            this.showToast('Failed to fetch posts', 'error');
-        } finally {
-            this.showLoading(false);
-        }
-    }
-
-    async createPost() {
-        const title = document.getElementById('postTitle').value.trim();
-        const body = document.getElementById('postBody').value.trim();
-        
-        if (!title || !body) {
-            this.showToast('Please fill in both title and body', 'warning');
-            return;
-        }
-
-        try {
-            this.showLoading(true);
-            const response = await fetch('/api/posts', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ title, body, userId: 1 })
-            });
-            const post = await response.json();
-            this.displayApiResults(post);
-            this.showToast('Post created successfully', 'success');
-            
-            // Clear form
-            document.getElementById('postTitle').value = '';
-            document.getElementById('postBody').value = '';
-            
-            // Refresh queue to show new queued item if offline
-            this.refreshQueue();
-        } catch (error) {
-            console.error('Failed to create post:', error);
-            this.displayApiResults({ error: error.message });
-            this.showToast('Failed to create post', 'error');
-        } finally {
-            this.showLoading(false);
-        }
-    }
-
-    async fetchUsers() {
-        try {
-            this.showLoading(true);
-            const response = await fetch('/api/users');
-            const users = await response.json();
-            this.displayApiResults(users);
-            this.showToast('Users fetched successfully', 'success');
-        } catch (error) {
-            console.error('Failed to fetch users:', error);
-            this.displayApiResults({ error: error.message });
-            this.showToast('Failed to fetch users', 'error');
-        } finally {
-            this.showLoading(false);
-        }
-    }
-
-    async createUser() {
-        try {
-            this.showLoading(true);
-            const userData = {
-                name: 'Test User',
-                username: 'testuser_' + Date.now(),
-                email: `test${Date.now()}@example.com`,
-                address: {
-                    street: '123 Test St',
-                    suite: 'Apt 1',
-                    city: 'Test City',
-                    zipcode: '12345'
-                },
-                phone: '1-555-TEST',
-                website: 'test.example.com',
-                company: {
-                    name: 'Test Company',
-                    catchPhrase: 'Testing offline functionality',
-                    bs: 'offline solutions'
-                }
-            };
-
-            const response = await fetch('/api/users', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(userData)
-            });
-            const user = await response.json();
-            this.displayApiResults(user);
-            this.showToast('User created successfully', 'success');
-            
-            // Refresh queue to show new queued item if offline
-            this.refreshQueue();
-        } catch (error) {
-            console.error('Failed to create user:', error);
-            this.displayApiResults({ error: error.message });
-            this.showToast('Failed to create user', 'error');
-        } finally {
-            this.showLoading(false);
-        }
-    }
-
-    displayApiResults(data) {
-        const resultsContainer = document.getElementById('apiResults');
-        resultsContainer.textContent = JSON.stringify(data, null, 2);
-    }
-
-    // Conflict resolution methods
-    async openConflictModal(conflictId) {
-        try {
-            const response = await fetch('/api/offline/conflicts');
-            const conflicts = await response.json();
-            const conflict = conflicts.find(c => c.id === conflictId);
-            
-            if (!conflict) {
-                this.showToast('Conflict not found', 'error');
-                return;
-            }
-
-            this.currentConflict = conflict;
-            
-            document.getElementById('localData').textContent = JSON.stringify(conflict.local_data, null, 2);
-            document.getElementById('serverData').textContent = JSON.stringify(conflict.server_data, null, 2);
-            
-            document.getElementById('conflictModal').classList.add('show');
-        } catch (error) {
-            console.error('Failed to open conflict modal:', error);
-            this.showToast('Failed to open conflict resolution', 'error');
-        }
-    }
-
-    closeModal() {
-        document.getElementById('conflictModal').classList.remove('show');
-        this.currentConflict = null;
-    }
-
-    async resolveConflict(resolution) {
-        if (!this.currentConflict) {
-            return;
-        }
-
-        try {
-            this.showLoading(true);
-            const response = await fetch(`/api/offline/conflicts/${this.currentConflict.id}/resolve`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ resolution })
-            });
-            const result = await response.json();
-            
-            if (result.success) {
-                this.showToast('Conflict resolved successfully', 'success');
-                this.closeModal();
-                this.refreshConflicts();
-                this.refreshStats();
-            } else {
-                this.showToast('Failed to resolve conflict', 'error');
-            }
-        } catch (error) {
-            console.error('Failed to resolve conflict:', error);
-            this.showToast('Failed to resolve conflict', 'error');
         } finally {
             this.showLoading(false);
         }
@@ -700,22 +358,22 @@ class OffNetApp {
     }
 
     startPeriodicUpdates() {
-        // Update stats every 10 seconds
+        // Update stats every 5 seconds (more frequent)
         setInterval(() => {
             this.refreshStats();
-        }, 10000);
+        }, 5000);
 
-        // Update queue every 15 seconds
+        // Update queue every 3 seconds (more frequent)
         setInterval(() => {
             this.refreshQueue();
-        }, 15000);
+        }, 3000);
 
-        // Send WebSocket ping every 30 seconds
+        // Send WebSocket ping every 20 seconds
         setInterval(() => {
             if (this.ws && this.ws.readyState === WebSocket.OPEN) {
                 this.ws.send(JSON.stringify({ type: 'ping' }));
             }
-        }, 30000);
+        }, 20000);
     }
 }
 

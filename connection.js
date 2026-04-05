@@ -6,9 +6,9 @@ class ConnectionManager {
     constructor() {
         this.isOnline = true;
         this.checkInterval = null;
-        this.checkFrequency = 5000; // 5 seconds
+        this.checkFrequency = 2000; // 2 seconds (more aggressive)
         this.testUrl = 'https://jsonplaceholder.typicode.com/posts/1';
-        this.timeout = 3000; // 3 seconds timeout
+        this.timeout = 2000; // 2 seconds timeout (faster detection)
         this.manualOverride = false;
         this.listeners = [];
     }
