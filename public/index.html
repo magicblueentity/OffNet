@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OffNet - Offline-First Middleware</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌐</text></svg>">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-content">
+                <h1 class="title">
+                    <span class="icon">🌐</span>
+                    OffNet
+                </h1>
+                <p class="subtitle">Control Center</p>
+            </div>
+            <div class="connection-status" id="connectionStatus">
+                <div class="status-indicator" id="statusIndicator"></div>
+                <span class="status-text" id="statusText">Checking...</span>
+            </div>
+        </header>
+
+        <main class="main">
+            <!-- Control Panel -->
+            <section class="control-panel">
+                <h2>Connection Control</h2>
+                <div class="connection-controls">
+                    <button id="goOnline" class="btn btn-primary">Go Online</button>
+                    <button id="goOffline" class="btn btn-secondary">Go Offline</button>
+                    <button id="clearCache" class="btn btn-danger">Clear Cache</button>
+                    <button id="startSync" class="btn btn-success">Start Sync</button>
+                </div>
+            </section>
+
+            <!-- Status Dashboard -->
+            <section class="dashboard">
+                <h2>System Status</h2>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="queueSize">0</div>
+                        <div class="stat-label">Queued Requests</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="cacheSize">0</div>
+                        <div class="stat-label">Cached Responses</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="syncedCount">0</div>
+                        <div class="stat-label">Synced Requests</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="conflictCount">0</div>
+                        <div class="stat-label">Conflicts</div>
+                    </div>
+                </div>
+                <div class="last-sync">
+                    <span>Last Sync: </span>
+                    <span id="lastSyncTime">Never</span>
+                </div>
+            </section>
+
+            <!-- API Demo -->
+            <section class="api-demo">
+                <h2>API Demo</h2>
+                <div class="demo-controls">
+                    <div class="demo-section">
+                        <h3>Posts</h3>
+                        <button id="fetchPosts" class="btn btn-primary">Fetch Posts</button>
+                        <button id="createPost" class="btn btn-success">Create Post</button>
+                        <div class="post-form">
+                            <input type="text" id="postTitle" placeholder="Post Title">
+                            <textarea id="postBody" placeholder="Post Body"></textarea>
+                        </div>
+                    </div>
+                    <div class="demo-section">
+                        <h3>Users</h3>
+                        <button id="fetchUsers" class="btn btn-primary">Fetch Users</button>
+                        <button id="createUser" class="btn btn-success">Create User</button>
+                    </div>
+                </div>
+                <div class="demo-results">
+                    <h3>Results</h3>
+                    <div id="apiResults" class="results-container"></div>
+                </div>
+            </section>
+
+            <!-- Queue Viewer -->
+            <section class="queue-viewer">
+                <h2>Request Queue</h2>
+                <div class="queue-controls">
+                    <button id="refreshQueue" class="btn btn-primary">Refresh</button>
+                    <button id="retryFailed" class="btn btn-warning">Retry Failed</button>
+                </div>
+                <div id="queueList" class="queue-list"></div>
+            </section>
+
+            <!-- Cache Viewer -->
+            <section class="cache-viewer">
+                <h2>Cache Contents</h2>
+                <div class="cache-controls">
+                    <button id="refreshCache" class="btn btn-primary">Refresh</button>
+                    <button id="clearCacheBtn" class="btn btn-danger">Clear All</button>
+                </div>
+                <div id="cacheList" class="cache-list"></div>
+            </section>
+
+            <!-- Logs Viewer -->
+            <section class="logs-viewer">
+                <h2>System Logs</h2>
+                <div class="logs-controls">
+                    <select id="logLevel" class="log-level-select">
+                        <option value="">All Levels</option>
+                        <option value="error">Error</option>
+                        <option value="warn">Warning</option>
+                        <option value="info">Info</option>
+                        <option value="debug">Debug</option>
+                    </select>
+                    <button id="refreshLogs" class="btn btn-primary">Refresh</button>
+                    <button id="clearLogs" class="btn btn-danger">Clear</button>
+                </div>
+                <div id="logsList" class="logs-list"></div>
+            </section>
+
+            <!-- Conflicts Viewer -->
+            <section class="conflicts-viewer">
+                <h2>Data Conflicts</h2>
+                <div class="conflicts-controls">
+                    <button id="refreshConflicts" class="btn btn-primary">Refresh</button>
+                </div>
+                <div id="conflictsList" class="conflicts-list"></div>
+            </section>
+        </main>
+
+        <footer class="footer">
+            <p>&copy; 2024 OffNet - Advanced Offline-First Middleware</p>
+        </footer>
+    </div>
+
+    <!-- Modal for conflict resolution -->
+    <div id="conflictModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Resolve Conflict</h3>
+                <span class="close" id="closeModal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="conflict-details">
+                    <div class="conflict-section">
+                        <h4>Local Data</h4>
+                        <pre id="localData"></pre>
+                    </div>
+                    <div class="conflict-section">
+                        <h4>Server Data</h4>
+                        <pre id="serverData"></pre>
+                    </div>
+                </div>
+                <div class="conflict-actions">
+                    <button class="btn btn-primary" data-resolution="use_local">Use Local</button>
+                    <button class="btn btn-secondary" data-resolution="use_server">Use Server</button>
+                    <button class="btn btn-warning" data-resolution="manual">Manual Merge</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading overlay -->
+    <div id="loadingOverlay" class="loading-overlay hidden">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Processing...</div>
+    </div>
+
+    <!-- Toast notifications -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
