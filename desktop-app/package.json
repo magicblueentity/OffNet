@@ -1,0 +1,64 @@
+{
+  "name": "offnet-desktop",
+  "version": "1.0.0",
+  "description": "OffNet Desktop Application - Advanced Offline-First Middleware Manager",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "background": "node background-service.js",
+    "build": "electron-builder",
+    "build-win": "electron-builder --win",
+    "build-mac": "electron-builder --mac",
+    "build-linux": "electron-builder --linux"
+  },
+  "keywords": ["offline", "middleware", "desktop", "electron", "sync", "background"],
+  "author": "OffNet Team",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.6.4"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "sqlite3": "^5.1.6"
+  },
+  "build": {
+    "appId": "com.offnet.desktop",
+    "productName": "OffNet",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "**/*",
+      "!node_modules/**/*",
+      "!dist/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "background-service.js",
+        "to": "background-service.js"
+      },
+      {
+        "from": "background-sync.js",
+        "to": "background-sync.js"
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "extendInfo": {
+        "LSUIElement": true
+      }
+    },
+    "win": {
+      "target": "nsis",
+      "publish": {
+        "provider": "github"
+      }
+    },
+    "linux": {
+      "target": "AppImage",
+      "category": "Development"
+    }
+  }
+}

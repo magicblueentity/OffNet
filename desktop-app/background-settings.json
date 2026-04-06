@@ -1,0 +1,20 @@
+{
+  "backgroundCaching": true,
+  "syncInterval": 30000,
+  "cacheEndpoints": [
+    "/posts",
+    "/posts/1",
+    "/posts/2",
+    "/users",
+    "/users/1",
+    "/users/2",
+    "/comments",
+    "/comments/1",
+    "/albums",
+    "/albums/1",
+    "/photos",
+    "/photos/1",
+    "/todos",
+    "/todos/1"
+  ]
+}

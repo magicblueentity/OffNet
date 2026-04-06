@@ -1,23 +1,39 @@
 {
   "name": "offnet",
   "version": "1.0.0",
-  "description": "Advanced offline-first middleware for seamless application functionality",
+  "description": "Advanced offline-first middleware system with desktop application",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "desktop": "cd desktop-app && npm start",
+    "desktop-dev": "cd desktop-app && npm run dev",
+    "build-desktop": "cd desktop-app && npm run build",
+    "install-desktop": "install-desktop.bat",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": ["offline", "proxy", "sync", "middleware", "offline-first"],
+  "keywords": [
+    "offline",
+    "middleware",
+    "sync",
+    "cache",
+    "proxy",
+    "desktop",
+    "electron"
+  ],
   "author": "OffNet Team",
   "license": "MIT",
   "dependencies": {
     "express": "^4.18.2",
-    "sqlite3": "^5.1.6",
+    "ws": "^8.14.2",
     "axios": "^1.6.0",
-    "cors": "^2.8.5",
-    "ws": "^8.14.2"
+    "sqlite3": "^5.1.6"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.6.4"
   },
   "engines": {
-    "node": ">=14.0.0"
+    "node": ">=16.0.0"
   }
 }

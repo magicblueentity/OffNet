@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OffNet - Loading...</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            overflow: hidden;
+        }
+
+        .loading-container {
+            text-align: center;
+            z-index: 1;
+        }
+
+        .logo {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        .title {
+            font-size: 2.5rem;
+            font-weight: 300;
+            margin-bottom: 1rem;
+            letter-spacing: 2px;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.8;
+            margin-bottom: 2rem;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        .status {
+            font-size: 1rem;
+            opacity: 0.9;
+            margin-bottom: 0.5rem;
+        }
+
+        .error {
+            color: #ff6b6b;
+            background: rgba(255, 107, 107, 0.1);
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            border: 1px solid rgba(255, 107, 107, 0.3);
+        }
+
+        .controls {
+            margin-top: 2rem;
+        }
+
+        .btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin: 0 0.5rem;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .particles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            animation: particle-float 10s infinite linear;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+
+        @keyframes particle-float {
+            0% {
+                transform: translateY(100vh) translateX(0);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-100vh) translateX(100px);
+                opacity: 0;
+            }
+        }
+
+        .window-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 10;
+        }
+
+        .window-btn {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .window-btn:hover {
+            opacity: 0.8;
+        }
+
+        .close { background: #ff5f57; }
+        .minimize { background: #ffbd2e; }
+        .maximize { background: #28ca42; }
+    </style>
+</head>
+<body>
+    <div class="window-controls">
+        <div class="window-btn close" onclick="window.electronAPI.closeWindow()"></div>
+        <div class="window-btn minimize" onclick="window.electronAPI.minimizeWindow()"></div>
+        <div class="window-btn maximize" onclick="window.electronAPI.maximizeWindow()"></div>
+    </div>
+
+    <div class="particles" id="particles"></div>
+
+    <div class="loading-container">
+        <div class="logo">🌐</div>
+        <h1 class="title">OffNet</h1>
+        <p class="subtitle">Advanced Offline-First Middleware</p>
+        
+        <div class="spinner"></div>
+        <div class="status" id="status">Starting server...</div>
+        <div class="error" id="error" style="display: none;"></div>
+        
+        <div class="controls">
+            <button class="btn" onclick="startServer()">Start Server</button>
+            <button class="btn" onclick="stopServer()">Stop Server</button>
+            <button class="btn" onclick="retryConnection()">Retry</button>
+        </div>
+    </div>
+
+    <script>
+        let retryCount = 0;
+        let maxRetries = 10;
+        let retryInterval;
+
+        // Create particles
+        function createParticles() {
+            const container = document.getElementById('particles');
+            for (let i = 0; i < 50; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 10 + 's';
+                particle.style.animationDuration = (10 + Math.random() * 10) + 's';
+                container.appendChild(particle);
+            }
+        }
+
+        // Update status
+        function updateStatus(message, isError = false) {
+            const statusEl = document.getElementById('status');
+            const errorEl = document.getElementById('error');
+            
+            statusEl.textContent = message;
+            statusEl.style.display = isError ? 'none' : 'block';
+            errorEl.style.display = isError ? 'block' : 'none';
+            
+            if (isError) {
+                errorEl.textContent = message;
+            }
+        }
+
+        // Check server connection
+        async function checkServer() {
+            try {
+                const response = await fetch('http://localhost:3000');
+                if (response.ok) {
+                    updateStatus('Server ready! Loading dashboard...');
+                    setTimeout(() => {
+                        window.location.href = 'http://localhost:3000';
+                    }, 1000);
+                    return true;
+                }
+            } catch (error) {
+                // Server not ready yet
+                return false;
+            }
+            return false;
+        }
+
+        // Start server
+        async function startServer() {
+            updateStatus('Starting server...');
+            try {
+                const result = await window.electronAPI.startServer();
+                if (result.success) {
+                    updateStatus(result.message);
+                    startRetryProcess();
+                } else {
+                    updateStatus(result.message, true);
+                }
+            } catch (error) {
+                updateStatus('Failed to start server: ' + error.message, true);
+            }
+        }
+
+        // Stop server
+        async function stopServer() {
+            try {
+                const result = await window.electronAPI.stopServer();
+                if (result.success) {
+                    updateStatus('Server stopped');
+                    clearInterval(retryInterval);
+                } else {
+                    updateStatus(result.message, true);
+                }
+            } catch (error) {
+                updateStatus('Failed to stop server: ' + error.message, true);
+            }
+        }
+
+        // Retry connection
+        function retryConnection() {
+            retryCount = 0;
+            updateStatus('Retrying connection...');
+            startRetryProcess();
+        }
+
+        // Start retry process
+        function startRetryProcess() {
+            clearInterval(retryInterval);
+            retryInterval = setInterval(async () => {
+                retryCount++;
+                updateStatus(`Checking server... (${retryCount}/${maxRetries})`);
+                
+                const isReady = await checkServer();
+                if (isReady) {
+                    clearInterval(retryInterval);
+                } else if (retryCount >= maxRetries) {
+                    clearInterval(retryInterval);
+                    updateStatus('Server failed to start. Please check the logs.', true);
+                }
+            }, 2000);
+        }
+
+        // Listen for server status updates
+        if (window.electronAPI && window.electronAPI.onServerStatus) {
+            window.electronAPI.onServerStatus((event, status) => {
+                if (status.running) {
+                    updateStatus(status.message);
+                    startRetryProcess();
+                } else {
+                    updateStatus(status.message, true);
+                    clearInterval(retryInterval);
+                }
+            });
+        }
+
+        // Initialize
+        createParticles();
+        
+        // Auto-start server and check connection
+        setTimeout(() => {
+            startServer();
+        }, 1000);
+    </script>
+</body>
+</html>
